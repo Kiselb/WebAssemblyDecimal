@@ -534,7 +534,7 @@ pub const DECIMAL_MAX: Decimal = Decimal {
 
 pub const DECIMAL_MAX_STR: &str = "99999999999999999999999999999999999999";
 
-pub const DECIMAL_01: &[Decimal] = &[
+pub const DECIMAL_01: &[Decimal] = &[ // Remove
     Decimal { sign: DecimalSign::Positive, precision: DecimalPrecision::Precision38, scale: DecimalScale::Scale01, part_3: 0x00000000, part_2: 0x00000000, part_1: 0x00000000, part_0: 0x00000001,},
     Decimal { sign: DecimalSign::Positive, precision: DecimalPrecision::Precision38, scale: DecimalScale::Scale02, part_3: 0x00000000, part_2: 0x00000000, part_1: 0x00000000, part_0: 0x00000001,},
     Decimal { sign: DecimalSign::Positive, precision: DecimalPrecision::Precision38, scale: DecimalScale::Scale03, part_3: 0x00000000, part_2: 0x00000000, part_1: 0x00000000, part_0: 0x00000001,},
@@ -574,7 +574,7 @@ pub const DECIMAL_01: &[Decimal] = &[
     Decimal { sign: DecimalSign::Positive, precision: DecimalPrecision::Precision38, scale: DecimalScale::Scale37, part_3: 0x00000000, part_2: 0x00000000, part_1: 0x00000000, part_0: 0x00000001,},      
 ];
 
-pub const DECIMAL_10: &[Decimal] = &[
+pub const DECIMAL_10: &[Decimal] = &[ // Remove
     Decimal { sign: DecimalSign::Positive, precision: DecimalPrecision::Precision38, scale: DecimalScale::Scale00, part_3: 0x00000000, part_2: 0x00000000, part_1: 0x00000000, part_0: 0x0000000A,},
     Decimal { sign: DecimalSign::Positive, precision: DecimalPrecision::Precision38, scale: DecimalScale::Scale01, part_3: 0x00000000, part_2: 0x00000000, part_1: 0x00000000, part_0: 0x00000064,},
     Decimal { sign: DecimalSign::Positive, precision: DecimalPrecision::Precision38, scale: DecimalScale::Scale02, part_3: 0x00000000, part_2: 0x00000000, part_1: 0x00000000, part_0: 0x000003E8,},
@@ -4437,6 +4437,16 @@ fn decimal_div_works() {
     assert_eq!(result.part_1, 0);
     assert_eq!(result.part_2, 0);
     assert_eq!(result.part_3, 0);
+
+    let test1 = Decimal::parse("11.0").unwrap();
+    println!("Div result Decimal test1: {} {} {} {} {} {}", test1.precision as u32, test1.scale as u32, test1.part_0, test1.part_1, test1.part_2, test1.part_3);
+    let test2 = Decimal::parse("2.0").unwrap();
+    println!("Div result Decimal test2: {} {} {} {} {} {}", test2.precision as u32, test2.scale as u32, test2.part_0, test2.part_1, test2.part_2, test2.part_3);
+
+    let result = test1.div(&test2);
+    println!("Div result Decimal: {} {} {} {} {} {}", result.precision as u32, result.scale as u32, result.part_0, result.part_1, result.part_2, result.part_3);
+
+    assert_eq!(2 + 2, 4);
 }
 
 //#[test]
@@ -4957,16 +4967,16 @@ impl Decimal {
                 Ok(scale) =>
                     match (self.sign, rhs.sign) {
                         (DecimalSign::Negative, DecimalSign::Negative) => {
-                            Ok(Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, scale, mul_0, mul_1, mul_2, mul_3))
+                            Ok(Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, self.scale, mul_0, mul_1, mul_2, mul_3))
                         },
                         (DecimalSign::Negative, DecimalSign::Positive) => {
-                            Ok(Decimal::new(DecimalSign::Negative, DecimalPrecision::Precision38, scale, mul_0, mul_1, mul_2, mul_3))
+                            Ok(Decimal::new(DecimalSign::Negative, DecimalPrecision::Precision38, self.scale, mul_0, mul_1, mul_2, mul_3))
                         },
                         (DecimalSign::Positive, DecimalSign::Negative) => {
-                            Ok(Decimal::new(DecimalSign::Negative, DecimalPrecision::Precision38, scale, mul_0, mul_1, mul_2, mul_3))
+                            Ok(Decimal::new(DecimalSign::Negative, DecimalPrecision::Precision38, self.scale, mul_0, mul_1, mul_2, mul_3))
                         },
                         (DecimalSign::Positive, DecimalSign::Positive) => {
-                            Ok(Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, scale, mul_0, mul_1, mul_2, mul_3))
+                            Ok(Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, self.scale, mul_0, mul_1, mul_2, mul_3))
                         },
                     },
                 Err(_) => Err(DecimalError),
@@ -4990,98 +5000,133 @@ impl Decimal {
         // }
     }
     pub fn div(&self, rhs: &Decimal) -> Decimal {
-        let mut numerator = Decimal::new(DecimalSign::Positive, self.precision, self.scale, self.part_0, self.part_1, self.part_2, self.part_3);
-        let mut denominator = Decimal::new(DecimalSign::Positive, rhs.precision, rhs.scale, rhs.part_0, rhs.part_1, rhs.part_2, rhs.part_3);
+        let mut numerator = Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, self.scale, self.part_0, self.part_1, self.part_2, self.part_3);
+        let normalizing_scale = self.scale as u32;
+        for _ in 0..normalizing_scale {
+            numerator = numerator.mul(&DECIMAL_10[0]).unwrap();
+        };
+        let mut denominator = Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, rhs.part_0, rhs.part_1, rhs.part_2, rhs.part_3);
         let mut quotient = Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0);
+
+        //return Decimal::new(DecimalSign::Positive, self.precision, self.scale, self.part_0, self.part_1, self.part_2, self.part_3);
+
         let mut denominators: [Decimal; 38] = [
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
-            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
+            Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, rhs.scale, 0, 0, 0, 0),
         ];
-        let mut denominator_index: usize = 0;
-        denominators[denominator_index] = denominator;
+        let mut denominator_index: i32 = 0;
+        denominators[denominator_index as usize] = denominator;
+        //denominator_index += 1;
+
+        //return Decimal::new(DecimalSign::Positive, self.precision, self.scale, self.part_0, self.part_1, self.part_2, self.part_3);
+        println!("Numerator: {} {} {} {} {} {}", numerator.precision as u32, numerator.scale as u32, numerator.part_0, numerator.part_1, numerator.part_2, numerator.part_3);
+        
+        
+        //let mut i  = 0;
         loop {
-            let denominator_mul_10 = denominator.mul(&Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 10, 0, 0, 0)).unwrap();
+            //let denominator_mul_10 = denominator.mul(&Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, denominator.scale, 10, 0, 0, 0)).unwrap();
+            let denominator_mul_10 = denominator.mul(&DECIMAL_10[0]).unwrap();
             match numerator.compare_modulo(&denominator_mul_10) {
-                DecimalComparison::EQ | DecimalComparison::LT => break,
+                DecimalComparison::EQ | DecimalComparison::LT => { println!("EQ LT"); break; },
                 DecimalComparison::GT => {
-                    denominators[denominator_index] = denominator_mul_10;
                     denominator_index += 1;
+                    denominators[denominator_index as usize] = denominator_mul_10;
                     denominator = denominator_mul_10;
+                    println!("GT");
                 },
             };
         };
+        println!("Denominators (0): {} {} {} {} {} {}", denominators[0].precision as u32, denominators[0].scale as u32, denominators[0].part_0, denominators[0].part_1, denominators[0].part_2, denominators[0].part_3);
+        println!("Denominators (1): {} {} {} {} {} {}", denominators[1].precision as u32, denominators[1].scale as u32, denominators[1].part_0, denominators[1].part_1, denominators[1].part_2, denominators[1].part_3);
+        println!("Denominators (2): {} {} {} {} {} {}", denominators[2].precision as u32, denominators[2].scale as u32, denominators[2].part_0, denominators[2].part_1, denominators[2].part_2, denominators[2].part_3);
+        println!("Denominators (3): {} {} {} {} {} {}", denominators[3].precision as u32, denominators[3].scale as u32, denominators[3].part_0, denominators[3].part_1, denominators[3].part_2, denominators[3].part_3);
+        println!("Denominators (4): {} {} {} {} {} {}", denominators[4].precision as u32, denominators[4].scale as u32, denominators[4].part_0, denominators[4].part_1, denominators[4].part_2, denominators[4].part_3);
+        println!("Denominators (38): {} {} {} {} {} {}", denominators[37].precision as u32, denominators[37].scale as u32, denominators[37].part_0, denominators[37].part_1, denominators[37].part_2, denominators[37].part_3);
+        //return Decimal::new(DecimalSign::Positive, self.precision, self.scale, self.part_0, self.part_1, self.part_2, self.part_3);
+        //denominator_index -= 1;
         loop {
             let mut quotient_digit: usize = 0;
             loop { // Calc quotient digit
                 let numerator_previous = numerator;
-                numerator = numerator.sub(&denominators[denominator_index]);
+                numerator = numerator.sub(&denominators[denominator_index as usize]);
                 match numerator.sign {
                     DecimalSign::Negative => {
                         numerator = numerator_previous;
                         break;
                     },
                     DecimalSign::Positive => quotient_digit += 1,
-                    
-                }
+                };
+                // if quotient_digit > 38 {
+                //     println!("Error at Sub denominator");
+                //     return Decimal::new(DecimalSign::Positive, self.precision, self.scale, self.part_0, self.part_1, self.part_2, self.part_3);
+                // }
             }
-            quotient = quotient.mul(&Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 10, 0, 0, 0)).unwrap();
+            println!("Quotient digit: {}", quotient_digit);
+            println!("Quotient value before: {} {} {} {} {} {}", quotient.precision as u32, quotient.scale as u32, quotient.part_0, quotient.part_1, quotient.part_2, quotient.part_3);
+            quotient = quotient.mul(&Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, numerator.scale, 10, 0, 0, 0)).unwrap();
             quotient = quotient.add(&DECIMAL_DIGITS[0][quotient_digit]);
-            if denominator_index > 0 {
+            println!("Quotient value after: {} {} {} {} {} {}", quotient.precision as u32, quotient.scale as u32, quotient.part_0, quotient.part_1, quotient.part_2, quotient.part_3);
+            if denominator_index >= 0 {
                 loop { // Find denominator
-                    match denominators[denominator_index].compare(&numerator) {
+                    match denominators[denominator_index as usize].compare(&numerator) {
                         DecimalComparison::LT | DecimalComparison::EQ => break,
                         DecimalComparison::GT => {
-                            quotient = quotient.mul(&Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 10, 0, 0, 0)).unwrap();
+                            //quotient = quotient.mul(&Decimal::new(DecimalSign::Positive, DecimalPrecision::Precision38, DecimalScale::Scale00, 10, 0, 0, 0)).unwrap();
 
                         },
                     };
-                    if denominator_index == 0 {
+                    // if denominator_index == 0 {
+                    //     break;
+                    // } else {
+                    //     denominator_index -= 1;
+                    // };
+                    denominator_index -= 1;
+                    if denominator_index < 0 {
                         break;
-                    } else {
-                        denominator_index -= 1;
                     }
                 };
             }
-            if denominator_index == 0 {
+            if denominator_index < 0 {
                 break;
             }
         };
+        quotient.scale = DecimalScale::try_from_usize(quotient.scale as usize + normalizing_scale as usize).unwrap();
         quotient
     }
     pub fn div_10(&self) -> Result<Decimal, DecimalError> { //
